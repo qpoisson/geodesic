@@ -1,0 +1,5 @@
+include "geodesic_mesh.pyx"
+include "geodesic_algorithm_base.pyx"
+include "geodesic_algorithm_exact.pyx"
+include "geodesic_algorithm_dijkstra.pyx"
+include "geodesic_algorithm_subdivision.pyx"

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.7.0)
 project(geodesic)
 
 find_package(Git REQUIRED)
@@ -14,6 +14,8 @@ execute_process(
 message( STATUS "VERSION: ${GEODESIC_VERSION}")
 
 set(CMAKE_CXX_STANDARD 11)
+
+OPTION(PYTHON_BINDINGS "Set when you want to build PYTHON_BINDINGS (Python bindings for the library)" OFF)
 
 #################################################################################
 # GEODESIC LIBRARY
@@ -43,6 +45,35 @@ target_link_libraries(geodesic_matlab geodesic)
 install(TARGETS geodesic_matlab DESTINATION matlab)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/matlab/examples/ DESTINATION matlab FILES_MATCHING PATTERN "*.m")
 
+#################################################################################
+# PYTHON BINDINGS
+#################################################################################
+IF(PYTHON_BINDINGS)
+    find_package(Python 3 COMPONENTS Interpreter Development NumPy REQUIRED)
+    get_filename_component( _python_path ${Python_EXECUTABLE} PATH )
+    find_program(CYTHON_EXECUTABLE NAMES cython cython.bat cython3 HINTS ${_python_path})
+    if(NOT CYTHON_EXECUTABLE)
+        message(FATAL_ERROR "Could NOT find Cython")
+    endif()
+    add_custom_command(OUTPUT __init__.cpp
+                       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/python/geodesic 
+                       COMMAND ${CYTHON_EXECUTABLE} 
+                       ARGS --cplus __init__.pyx -o ${PROJECT_BINARY_DIR}/__init__.cpp)
+
+    include_directories(${Python_INCLUDE_DIRS} ${Python_NumPy_INCLUDE_DIRS})
+    add_library(geodesic_python SHARED __init__.cpp)
+    target_link_libraries(geodesic_python geodesic ${Python_LIBRARIES})
+    set_target_properties(geodesic_python PROPERTIES PREFIX "")
+    set_target_properties(geodesic_python PROPERTIES OUTPUT_NAME "geodesic")
+    IF (WIN32)
+        set_target_properties(geodesic_python PROPERTIES SUFFIX ".pyd")
+    ELSE()
+        set_target_properties(geodesic_python PROPERTIES SUFFIX ".so")
+    ENDIF()
+    install(TARGETS geodesic_python DESTINATION python)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/python/example.py DESTINATION python)
+    install(FILES tests/flat_triangular_mesh.txt DESTINATION python)
+ENDIF(PYTHON_BINDINGS)
 #################################################################################
 # TESTS
 #################################################################################
